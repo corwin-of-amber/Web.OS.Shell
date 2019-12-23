@@ -6,6 +6,7 @@ import { Terminal } from 'xterm';
 
 import { Process } from 'wasi-kernel/src/kernel';
 import { WorkerPool, ProcessLoader } from 'wasi-kernel/src/kernel/services/worker-pool';
+import { SharedVolume } from 'wasi-kernel/src/kernel/services/shared-fs';
 
 import { Pty } from './pty';
 
@@ -16,6 +17,7 @@ class Shell extends EventEmitter implements ProcessLoader {
     workerScript: string
     mainProcess: Process
     pool: WorkerPool
+    files: {[fn: string]: string | Uint8Array}
 
     constructor() {
         super();
@@ -23,28 +25,30 @@ class Shell extends EventEmitter implements ProcessLoader {
         this.pool = new WorkerPool(this.workerScript);
         this.pool.loader = this;
         this.pool.on('worker:data', (_, x) => this.emit('data', x));
+        this.files = {
+            '/bin/dash':    '#!/bin/dash.wasm',
+            '/bin/ls':      '#!/bin/ls.wasm',
+            '/bin/touch':   '#!/bin/touch.wasm'
+        };
     }
 
     start() {
-        this.mainProcess = this.spawn('dash', ['dash']).process;
+        this.mainProcess = this.spawn('/bin/dash', ['dash']).process;
     }
 
     spawn(prog: string, argv: string[], env?: {}) {
-        var wasm: string;
-        switch (argv[0] || prog) {
-        case "dash":  wasm = '/dash.wasm'; break;
-        case "ls":    wasm = '/bin/ls.wasm'; break;
-        case "cat":
-        case "mkdir":
-        case "touch":  wasm = '../busy.wasm'; break;
-        default:
+        var wasm: string, file = this.files[prog];
+        if (typeof file == 'string' && file.startsWith('#!'))
+            wasm = file.substring(2);
+        else
             wasm = prog;
-        }
 
         var p = this.pool.spawn(wasm, argv, env);
         p.promise
             .then((ev: {code:number}) => console.log(`${name} - exit ${ev.code}`))
             .catch((e: Error) => console.error(`${name} - error;`, e));
+
+        (<any>p.process).worker.postMessage({upload: this.files});
 
         return p;
     }
@@ -74,9 +78,13 @@ $(() => {
     var shell = new Shell();
     pty.on('data', (x: Buffer) => shell.write(x))
     shell.on('data', (x: string) => term.write(x))
+    Object.assign(shell.files, {
+        '/home/e': require('fs').readFileSync('./bin/example.ml.bin'),
+        '/bin/ocamlrun': '#!/bin/ocamlrun.wasm'
+    });
     shell.start();
 
-    Object.assign(window, {term, shell, dash: shell.mainProcess});
+    Object.assign(window, {term, shell, dash: shell.mainProcess, SharedVolume});
 });
 
 Object.assign(window, {Terminal});
