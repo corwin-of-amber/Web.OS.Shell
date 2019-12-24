@@ -16,15 +16,19 @@ class Shell extends EventEmitter implements ProcessLoader {
 
     workerScript: string
     mainProcess: Process
+    fgProcesses: Process[]
     pool: WorkerPool
+    env: {[name: string]: string}
     files: {[fn: string]: string | Uint8Array}
 
     constructor() {
         super();
         this.workerScript = '../node_modules/wasi-kernel/dist/worker.js';
+        this.fgProcesses = [];
         this.pool = new WorkerPool(this.workerScript);
         this.pool.loader = this;
         this.pool.on('worker:data', (_, x) => this.emit('data', x));
+        this.env = {TERM: 'xterm-256color'};
         this.files = {
             '/bin/dash':    '#!/bin/dash.wasm',
             '/bin/ls':      '#!/bin/ls.wasm',
@@ -33,7 +37,7 @@ class Shell extends EventEmitter implements ProcessLoader {
     }
 
     start() {
-        this.mainProcess = this.spawn('/bin/dash', ['dash']).process;
+        this.mainProcess = this.spawn('/bin/dash', ['dash'], this.env).process;
     }
 
     spawn(prog: string, argv: string[], env?: {}) {
@@ -44,9 +48,13 @@ class Shell extends EventEmitter implements ProcessLoader {
             wasm = prog;
 
         var p = this.pool.spawn(wasm, argv, env);
+        this.fgProcesses.unshift(p.process);
+
         p.promise
             .then((ev: {code:number}) => console.log(`${name} - exit ${ev.code}`))
-            .catch((e: Error) => console.error(`${name} - error;`, e));
+            .catch((e: Error) => console.error(`${name} - error;`, e))
+            .finally(() => this.fgProcesses[0] === p.process 
+                            && this.fgProcesses.shift());
 
         (<any>p.process).worker.postMessage({upload: this.files});
 
@@ -56,9 +64,8 @@ class Shell extends EventEmitter implements ProcessLoader {
     write(data: string | Uint8Array) {
         if (typeof data === 'string')
             data = Buffer.from(data);
-        for (let i = 0; i < Buffer.length; i++)  // ugh
-            if (data[i] == 13) data[i] = 10;
-        this.mainProcess.stdin.write(data);
+        var fgp = this.fgProcesses[0];
+        if (fgp) fgp.stdin.write(data);
     }
 }
 
@@ -80,6 +87,8 @@ $(() => {
     shell.on('data', (x: string) => term.write(x))
     Object.assign(shell.files, {
         '/home/e': require('fs').readFileSync('./bin/example.ml.bin'),
+        '/home/c': require('fs').readFileSync('./bin/ocaml'),
+        '/home/stdlib.cmi': require('fs').readFileSync('./bin/ocaml_stdlib.cmi'),
         '/bin/ocamlrun': '#!/bin/ocamlrun.wasm'
     });
     shell.start();
