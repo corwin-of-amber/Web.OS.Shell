@@ -13,11 +13,15 @@ class Pty extends EventEmitter {
         this.lnbuf = [];
     }
 
-    termWrite(buf) {
+    termWrite(buf: Buffer | string) {
+        if (typeof buf == 'string')
+            buf = Buffer.from(buf, 'binary');
+
         switch (this.mode) {
         case PtyMode.COOKED:
             this.cookedLineEdit(buf); break;
         default:
+            this.emit('term:data', buf);
         }
     }
 
@@ -29,9 +33,15 @@ class Pty extends EventEmitter {
         for (let i = 0; i < data.length; ++i) {
             let c = data[i];
             switch (c) {
+            case 0x04:
+                this.emit('eof');
+                break;
             case 0x7f: case 0x08:
-                var ndel = this.lnbuf.pop() == 0x1B ? 2 : 1;
-                writeStr("\x08".repeat(ndel) + "\x1B[K"); break;
+                if (this.lnbuf.length > 0) {
+                    var  ndel = this.lnbuf.pop() == 0x1B ? 2 : 1;
+                    writeStr("\x08".repeat(ndel) + "\x1B[K"); 
+                }
+                break;
             case 0x0D:
                 this.lnbuf.push(0x0A);
                 this.cookedFlush();

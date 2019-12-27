@@ -7,4 +7,9 @@
     <body>
         <div id="terminal"></div>
     </body>
+
+    <script>
+        /* hack: this may happend if page is reloaded while being built */
+        if (typeof Shell == 'undefined') location.reload();
+    </script>
 </html>

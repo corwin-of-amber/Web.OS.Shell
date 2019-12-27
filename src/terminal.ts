@@ -67,6 +67,11 @@ class Shell extends EventEmitter implements ProcessLoader {
         var fgp = this.fgProcesses[0];
         if (fgp) fgp.stdin.write(data);
     }
+
+    sendEof() {
+        var fgp = this.fgProcesses[0];
+        if (fgp) fgp.stdin.end();
+    }
 }
 
 
@@ -79,11 +84,12 @@ $(() => {
     term.focus();
 
     var pty = new Pty;
-    term.onData((x: string) => pty.termWrite(Buffer.from(x, 'binary')));
+    term.onData((x: string) => pty.termWrite(x));
     pty.on('term:data', (x: Buffer) => term.write(x));
 
     var shell = new Shell();
     pty.on('data', (x: Buffer) => shell.write(x))
+    pty.on('eof', () => shell.sendEof());
     shell.on('data', (x: string) => term.write(x))
     Object.assign(shell.files, {
         '/home/e': require('fs').readFileSync('./bin/example.ml.bin'),
@@ -93,7 +99,7 @@ $(() => {
     });
     shell.start();
 
-    Object.assign(window, {term, shell, dash: shell.mainProcess, SharedVolume});
+    Object.assign(window, {term, pty, shell, dash: shell.mainProcess, SharedVolume});
 });
 
-Object.assign(window, {Terminal});
+Object.assign(window, {Shell});
