@@ -2,14 +2,15 @@
 <html>
     <head>
         <link rel="stylesheet" href="../node_modules/xterm/css/xterm.css" />
-        <script src="../dist/terminal.js"></script>
+        <script src="./terminal.ts"></script>
+        <link rel="prefetch" href="../node_modules/wasi-kernel/src/kernel/worker.ts" />
     </head>
     <body>
         <div id="terminal"></div>
     </body>
 
     <script>
-        /* hack: this may happend if page is reloaded while being built */
+        /* hack: this may happen if page is reloaded while being built */
         if (typeof Shell == 'undefined') location.reload();
     </script>
 </html>

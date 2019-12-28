@@ -2,7 +2,7 @@
   "name": "basin-desktop",
   "version": "1.0.0",
   "description": "",
-  "main": "src/index.html",
+  "main": "dist/index.html",
   "dependencies": {
     "@types/jquery": "^3.3.31",
     "jquery": "^3.4.1",
