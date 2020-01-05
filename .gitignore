@@ -3,4 +3,5 @@ node_modules
 /*.wasm
 /build
 /bin
+/public
 .cache
