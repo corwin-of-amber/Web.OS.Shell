@@ -1,0 +1,6 @@
+div#terminal {
+    box-shadow: 0 0 1em 0 inset rgba(0,0,0,0.9);
+    background: rgba(0,0,0,0.7);
+    padding: 2px;
+    display: inline-block;
+}

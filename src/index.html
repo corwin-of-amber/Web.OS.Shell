@@ -2,7 +2,8 @@
 <html>
     <head>
         <link rel="stylesheet" href="../node_modules/xterm/css/xterm.css" />
-        <script src="./shell.ts"></script>
+        <script src="./main.ts"></script>
+        <link rel="stylesheet" href="./index.css" type="text/css" />
         <link rel="prefetch" href="../node_modules/wasi-kernel/src/kernel/worker.ts" />
     </head>
     <body>
@@ -11,6 +12,7 @@
 
     <script>
         /* hack: this may happen if page is reloaded while being built */
-        if (typeof Shell == 'undefined') location.reload();
+        if (typeof main == 'undefined') location.reload();
+        main();
     </script>
 </html>

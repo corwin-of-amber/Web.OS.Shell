@@ -1,14 +1,10 @@
-// build with
-// parcel watch --hmr-hostname=localhost --public-url '.' src/index.html &
 import { EventEmitter } from 'events';
-import $ from 'jquery';
 import { Terminal } from 'xterm';
 
 import { Process } from 'wasi-kernel/src/kernel';
 import { WorkerPool, ProcessLoader } from 'wasi-kernel/src/kernel/services/worker-pool';
-import { SharedVolume } from 'wasi-kernel/src/kernel/services/shared-fs';
 
-import { Pty, PtyMode, PtyOptions } from './pty';
+import { Pty } from './pty';
 import path from 'path';
 
 
@@ -92,6 +88,32 @@ class Shell extends EventEmitter implements ProcessLoader {
     }
 }
 
+
+class TtyShell extends Shell {
+
+    pty: Pty
+
+    constructor() {
+        super();
+        this.pty = this.createPty();
+    }
+
+    createPty() {
+        var pty = new Pty();
+        pty.on('data', (x: Buffer) => this.write(x))
+        pty.on('eof', () => this.sendEof());
+        this.on('term-ctrl', (flags: number[]) => pty.setFlags(flags));
+        return pty;
+    }
+
+    attach(term: Terminal) {
+        term.onData((x: string) => this.pty.termWrite(x));
+        this.on('data', (x: Uint8Array) => term.write(x));
+    }
+
+}
+
+
 /**
  * Note: Parcel updates the 'href' of links during build.
  */
@@ -99,42 +121,6 @@ function getWorkerUrl() : string {
     return (<any>document.head.querySelector('link[href^=worker]')).href;
 }
 
-async function fetchBinary(url: string) {
-    return new Uint8Array(
-        await (await fetch(url)).arrayBuffer()
-    );
-}
 
 
-$(() => {
-    var term = new Terminal({cols: 60, rows: 19, allowTransparency: true,
-    theme: {background: 'rgba(0,0,0,0.1)'}});
-    term.setOption("convertEol", true)
-    term.open(document.getElementById('terminal'));
-    term.write(`\nStarting \x1B[1;3;31mdash\x1B[0m \n\n`)
-    term.focus();
-
-    var pty = new Pty;
-    term.onData((x: string) => pty.termWrite(x));
-    pty.on('term:data', (x: Buffer) => term.write(x));
-
-    var shell = new Shell();
-    pty.on('data', (x: Buffer) => shell.write(x))
-    pty.on('eof', () => shell.sendEof());
-    shell.on('data', (x: string) => term.write(x))
-    shell.on('term-ctrl', (flags: number[]) => pty.setFlags(flags));
-    Object.assign(shell.files, {
-        '/bin/ocamlrun': '#!/bin/ocamlrun.wasm',
-        '/bin/ocaml':    '#!/bin/ocamlrun.wasm /bin/ocaml.byte',
-        '/bin/fm':       '#!/bin/fileman.wasm'
-    });
-    (async () => {
-        shell.files['/bin/ocaml.byte'] = await fetchBinary('/bin/ocaml');
-        shell.files['/home/stdlib.cmi'] = await fetchBinary('/bin/ocaml_stdlib.cmi');
-    })();
-    shell.start();
-
-    Object.assign(window, {term, pty, shell, dash: shell.mainProcess, SharedVolume});
-});
-
-Object.assign(window, {Shell});
+export {Shell, TtyShell}
