@@ -107,7 +107,9 @@ class TtyShell extends Shell {
     }
 
     attach(term: Terminal) {
+        term.setOption("convertEol", true)
         term.onData((x: string) => this.pty.termWrite(x));
+        this.pty.on('term:data', (x: Buffer) => term.write(x));
         this.on('data', (x: Uint8Array) => term.write(x));
     }
 
@@ -118,7 +120,7 @@ class TtyShell extends Shell {
  * Note: Parcel updates the 'href' of links during build.
  */
 function getWorkerUrl() : string {
-    return (<any>document.head.querySelector('link[href^=worker]')).href;
+    return (<any>document.head.querySelector('#wasi-worker')).href;
 }
 
 

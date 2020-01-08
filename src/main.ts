@@ -32,7 +32,7 @@ function main() {
             '/bin/fm':       '#!/bin/fileman.wasm'
         });
         (async () => {
-            shell.files['/bin/ocaml.byte'] = await fetchBinary('/bin/ocaml');
+            shell.files['/bin/ocaml.byte'] = await fetchBinary('/bin/ocaml.byte');
             shell.files['/home/stdlib.cmi'] = await fetchBinary('/bin/ocaml_stdlib.cmi');
         })();
         shell.start();

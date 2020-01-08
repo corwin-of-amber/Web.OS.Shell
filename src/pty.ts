@@ -27,7 +27,6 @@ class Pty extends EventEmitter {
     }
 
     setOpts(opts: PtyOptions) {
-        console.log(opts);
         if (opts.mode !== this.opts.mode) {
             this.cookedFlush();
         }
