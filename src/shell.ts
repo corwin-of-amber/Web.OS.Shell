@@ -1,8 +1,9 @@
 import { EventEmitter } from 'events';
 import { Terminal } from 'xterm';
 
-import { Process } from 'wasi-kernel/src/kernel';
-import { WorkerPool, ProcessLoader } from 'wasi-kernel/src/kernel/services/worker-pool';
+import { Process, WorkerProcess } from 'wasi-kernel/src/kernel';
+import { SharedVolume } from 'wasi-kernel/src/kernel/services/shared-fs';
+import { WorkerPool, ProcessLoader, WorkerPoolItem } from 'wasi-kernel/src/kernel/services/worker-pool';
 
 import { Pty } from './pty';
 import path from 'path';
@@ -16,21 +17,30 @@ class Shell extends EventEmitter implements ProcessLoader {
     fgProcesses: Process[]
     pool: WorkerPool
     env: {[name: string]: string}
+    volume: SharedVolume
     files: {[fn: string]: string | Uint8Array}
+    filesUploaded: boolean
 
     constructor() {
         super();
         this.workerScript = getWorkerUrl();
         this.fgProcesses = [];
-        this.pool = new WorkerPool(this.workerScript);
+        this.pool = new WorkerPool();
         this.pool.loader = this;
         this.pool.on('worker:data', (_, x) => this.emit('data', x));
         this.env = {TERM: 'xterm-256color'};
+        this.volume = new SharedVolume({dev: {size: 1 << 25}});
         this.files = {
             '/bin/dash':    '#!/bin/dash.wasm',
             '/bin/ls':      '#!/bin/ls.wasm',
-            '/bin/touch':   '#!/bin/touch.wasm'
+            '/bin/touch':   '#!/bin/touch.wasm',
+            '/bin/cat':     '#!/bin/cat.wasm',
+            '/bin/cut':     '#!/bin/cut.wasm',
+            '/bin/env':     '#!/bin/env.wasm',
+            '/bin/cksum':   '#!/bin/cksum.wasm',
+            '/bin/mkdir':   '#!/bin/mkdir.wasm'
         };
+        this.filesUploaded = false;
     }
 
     start() {
@@ -41,7 +51,7 @@ class Shell extends EventEmitter implements ProcessLoader {
         if (!path.isAbsolute(prog) && env.CWD)
             prog = path.join(env.CWD, prog);
 
-        var wasm: string, file = this.files[prog];
+        var wasm: string, file = this.files[prog] || this.volume.readFileSync(prog, 'utf-8'); // this.files[prog];
         if (typeof file == 'string' && file.startsWith('#!')) {
             let iargs = file.substring(2).split(/\s+/);
             wasm = iargs[0];
@@ -53,8 +63,6 @@ class Shell extends EventEmitter implements ProcessLoader {
         var p = this.pool.spawn(wasm, argv, env);
         this.fgProcesses.unshift(p.process);
 
-        this.populate(p.process);
-
         p.promise
             .then((ev: {code:number}) => console.log(`${name} - exit ${ev.code}`))
             .catch((e: Error) => console.error(`${name} - error;`, e))
@@ -64,15 +72,23 @@ class Shell extends EventEmitter implements ProcessLoader {
         return p;
     }
 
-    populate(p: Process) {
-        if (!(<any>p)._populated) {
-            (<any>p)._populated = true;
-            (<any>p).worker.postMessage({upload: this.files});
-            p.on('syscall', ev => {
-                if (ev.func === 'ioctl:tty' && ev.data.fd === 0)
-                    this.emit('term-ctrl', ev.data.flags);
-            });
+    populate(p: WorkerPoolItem) {
+        console.warn('--- populate');
+
+        p.process.mountFs(this.volume);
+        if (!this.filesUploaded) {
+            p.process.worker.postMessage({upload: this.files});
+            this.filesUploaded = true;
         }
+        p.process.on('syscall', ev => {
+            if (ev.func === 'ioctl:tty' && ev.data.fd === 0)
+                this.emit('term-ctrl', ev.data.flags);
+        });
+    }
+
+    async uploadFile(filename: string, content: string | Uint8Array) {
+        this.volume.mkdirpSync(path.dirname(filename));
+        return this.volume.promises.writeFile(filename, content);
     }
 
     write(data: string | Uint8Array) {

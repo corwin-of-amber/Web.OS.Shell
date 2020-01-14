@@ -3,19 +3,38 @@
 import $ from 'jquery';
 import { Terminal } from 'xterm';
 
-import { TtyShell } from './shell';
+import { Shell, TtyShell } from './shell';
 
 
 
-async function fetchBinary(url: string) {
-    return new Uint8Array(
-        await (await fetch(url)).arrayBuffer()
-    );
+class Resource {
+    uri: string
+
+    constructor(uri: string) {
+        this.uri = uri;
+    }
+
+    async fetch() {
+        return new Uint8Array(
+            await (await fetch(this.uri)).arrayBuffer()
+        );    
+    }
+}
+
+async function uploadFiles(shell: Shell, files: {[filename: string]: string | Uint8Array | Resource}) {
+    let start = +new Date;
+    for (let kv of Object.entries(files)) {
+        let [filename, content] = kv;
+        if (content instanceof Resource)
+            content = await content.fetch();
+        await shell.uploadFile(filename, content);
+        console.log(`%cwrote ${filename} (+${+new Date - start}ms)`, 'color: #99c');
+    }
 }
 
 
 function main() {
-    $(() => {
+    $(async () => {
         var term = new Terminal({cols: 60, rows: 19, allowTransparency: true,
         theme: {background: 'rgba(0,0,0,0.1)'}});
         term.setOption("convertEol", true)
@@ -26,16 +45,23 @@ function main() {
         var shell = new TtyShell();
         shell.attach(term);
 
-        Object.assign(shell.files, {
-            '/bin/ocamlrun': '#!/bin/ocamlrun.wasm',
-            '/bin/ocaml':    '#!/bin/ocamlrun.wasm /bin/ocaml.byte',
-            '/bin/fm':       '#!/bin/fileman.wasm'
-        });
-        (async () => {
-            shell.files['/bin/ocaml.byte'] = await fetchBinary('/bin/ocaml.byte');
-            shell.files['/home/stdlib.cmi'] = await fetchBinary('/bin/ocaml_stdlib.cmi');
-        })();
+        var files = {
+            '/bin/fm':             '#!/bin/fileman.wasm',
+            '/bin/ocamlrun':       '#!/bin/ocamlrun.wasm',
+            '/bin/ocaml':          '#!/bin/ocamlrun.wasm /bin/ocaml.byte',
+            '/bin/ocamlc':         '#!/bin/ocamlrun.wasm /bin/ocamlc.byte',
+            '/home/camlheader':    '#!/bin/ocamlrun',
+            '/bin/ocaml.byte':     new Resource('/bin/ocaml.byte'),
+            '/bin/ocamlc.byte':    new Resource('/bin/ocamlc.byte'),
+            '/home/stdlib.cmi':    new Resource('/bin/ocaml/stdlib.cmi'),
+            '/home/stdlib.cma':    new Resource('/bin/ocaml/stdlib.cma'),
+            '/home/std_exit.cmo':  new Resource('/bin/ocaml/std_exit.cmo'),
+            '/home/a.ml':          'let _ = print_int @@ 4 + 5;\nprint_string "\n"\n'
+        };
+        
         shell.start();
+
+        uploadFiles(shell, files);
 
         Object.assign(window, {term, shell, dash: shell.mainProcess});
     });
