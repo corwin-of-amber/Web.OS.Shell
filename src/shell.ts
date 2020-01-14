@@ -88,7 +88,10 @@ class Shell extends EventEmitter implements ProcessLoader {
 
     async uploadFile(filename: string, content: string | Uint8Array) {
         this.volume.mkdirpSync(path.dirname(filename));
-        return this.volume.promises.writeFile(filename, content);
+        if (content instanceof Uint8Array && content.length > (1 << 14))
+            return this.volume.writeBlob(filename, content);
+        else
+            return this.volume.promises.writeFile(filename, content);
     }
 
     write(data: string | Uint8Array) {
