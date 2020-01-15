@@ -54,9 +54,13 @@ class Shell extends EventEmitter implements ProcessLoader {
         if (!path.isAbsolute(prog) && env.CWD)
             prog = path.join(env.CWD, prog);
 
-        var wasm: string, file = this.files[prog] || this.volume.readFileSync(prog, 'utf-8'); // this.files[prog];
-        if (typeof file == 'string' && file.startsWith('#!')) {
-            let iargs = file.substring(2).split(/\s+/);
+        var wasm: string,
+            file = this.files[prog] || this.volume.readFileSync(prog),
+            interp = this.shebang(file);
+
+        if (interp) {
+            let iargs = interp.ln.split(/\s+/);
+            if (interp.nl) iargs.push(prog);
             wasm = iargs[0];
             argv = [argv[0], ...iargs.slice(1), ...argv.slice(1)];
         }
@@ -85,6 +89,26 @@ class Shell extends EventEmitter implements ProcessLoader {
             if (ev.func === 'ioctl:tty' && ev.data.fd === 0)
                 this.emit('term-ctrl', ev.data.flags);
         });
+    }
+
+    shebang(script: string | Uint8Array) {
+        var magic = "#!", idx: number, ln: string;
+        if (typeof script == 'string') {
+            if (script.startsWith(magic)) {
+                idx = script.indexOf('\n');
+                ln = (idx > -1) ? script.substring(2, idx)
+                                : script.substring(2);
+            }
+        }
+        else if (script instanceof Uint8Array) {
+            if (script[0] == magic.charCodeAt(0) && script[1] == magic.charCodeAt(1)) {
+                var idx = script.indexOf('\n'.charCodeAt(0));
+                ln = Buffer.from((idx > -1) ? script.subarray(2, idx) 
+                                            : script.subarray(2))
+                      .toString('utf-8');
+            }
+        }
+        return ln ? {ln, nl: idx > -1} : undefined;
     }
 
     write(data: string | Uint8Array) {

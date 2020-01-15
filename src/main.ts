@@ -25,7 +25,7 @@ function main() {
             '/bin/ocamlrun':       '#!/bin/ocamlrun.wasm',
             '/bin/ocaml':          '#!/bin/ocamlrun.wasm /bin/ocaml.byte',
             '/bin/ocamlc':         '#!/bin/ocamlrun.wasm /bin/ocamlc.byte',
-            '/home/camlheader':    '#!/bin/ocamlrun',
+            '/home/camlheader':    '#!/bin/ocamlrun.wasm\n',
             '/bin/ocaml.byte':     new Resource('/bin/ocaml.byte'),
             '/bin/ocamlc.byte':    new Resource('/bin/ocamlc.byte'),
             '/home/stdlib.cmi':    new Resource('/bin/ocaml/stdlib.cmi'),
