@@ -7,6 +7,7 @@ import { WorkerPool, ProcessLoader, WorkerPoolItem } from 'wasi-kernel/src/kerne
 
 import { Pty } from './pty';
 import path from 'path';
+import { PackageManager } from './package-mgr';
 
 
 
@@ -18,6 +19,7 @@ class Shell extends EventEmitter implements ProcessLoader {
     pool: WorkerPool
     env: {[name: string]: string}
     volume: SharedVolume
+    packageManager: PackageManager
     files: {[fn: string]: string | Uint8Array}
     filesUploaded: boolean
 
@@ -30,6 +32,7 @@ class Shell extends EventEmitter implements ProcessLoader {
         this.pool.on('worker:data', (_, x) => this.emit('data', x));
         this.env = {TERM: 'xterm-256color'};
         this.volume = new SharedVolume({dev: {size: 1 << 25}});
+        this.packageManager = new PackageManager(this.volume);
         this.files = {
             '/bin/dash':    '#!/bin/dash.wasm',
             '/bin/ls':      '#!/bin/ls.wasm',
@@ -86,14 +89,6 @@ class Shell extends EventEmitter implements ProcessLoader {
         });
     }
 
-    async uploadFile(filename: string, content: string | Uint8Array) {
-        this.volume.mkdirpSync(path.dirname(filename));
-        if (content instanceof Uint8Array && content.length > (1 << 14))
-            return this.volume.writeBlob(filename, content);
-        else
-            return this.volume.promises.writeFile(filename, content);
-    }
-
     write(data: string | Uint8Array) {
         if (typeof data === 'string')
             data = Buffer.from(data);
@@ -144,4 +139,4 @@ function getWorkerUrl() : string {
 
 
 
-export {Shell, TtyShell}
+export {Shell, TtyShell }

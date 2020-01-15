@@ -3,34 +3,9 @@
 import $ from 'jquery';
 import { Terminal } from 'xterm';
 
-import { Shell, TtyShell } from './shell';
+import { TtyShell } from './shell';
+import { Resource } from './package-mgr';
 
-
-
-class Resource {
-    uri: string
-
-    constructor(uri: string) {
-        this.uri = uri;
-    }
-
-    async fetch() {
-        return new Uint8Array(
-            await (await fetch(this.uri)).arrayBuffer()
-        );    
-    }
-}
-
-async function uploadFiles(shell: Shell, files: {[filename: string]: string | Uint8Array | Resource}) {
-    let start = +new Date;
-    for (let kv of Object.entries(files)) {
-        let [filename, content] = kv;
-        if (content instanceof Resource)
-            content = await content.fetch();
-        await shell.uploadFile(filename, content);
-        console.log(`%cwrote ${filename} (+${+new Date - start}ms)`, 'color: #99c');
-    }
-}
 
 
 function main() {
@@ -45,7 +20,7 @@ function main() {
         var shell = new TtyShell();
         shell.attach(term);
 
-        var files = {
+        var baseSys = {
             '/bin/fm':             '#!/bin/fileman.wasm',
             '/bin/ocamlrun':       '#!/bin/ocamlrun.wasm',
             '/bin/ocaml':          '#!/bin/ocamlrun.wasm /bin/ocaml.byte',
@@ -61,7 +36,7 @@ function main() {
         
         shell.start();
 
-        uploadFiles(shell, files);
+        shell.packageManager.install(baseSys);
 
         Object.assign(window, {term, shell, dash: shell.mainProcess});
     });
