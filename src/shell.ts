@@ -31,7 +31,7 @@ class Shell extends EventEmitter implements ProcessLoader {
         this.pool.loader = this;
         this.pool.on('worker:data', (_, x) => this.emit('data', x));
         this.env = {TERM: 'xterm-256color'};
-        this.volume = new SharedVolume({dev: {size: 1 << 25}});
+        this.volume = new SharedVolume({dev: {size: 1 << 26}});
         this.packageManager = new PackageManager(this.volume);
         this.files = {
             '/bin/dash':    '#!/bin/dash.wasm',
@@ -76,8 +76,6 @@ class Shell extends EventEmitter implements ProcessLoader {
     }
 
     populate(p: WorkerPoolItem) {
-        console.warn('--- populate');
-
         p.process.mountFs(this.volume);
         if (!this.filesUploaded) {
             p.process.worker.postMessage({upload: this.files});

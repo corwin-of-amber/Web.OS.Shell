@@ -4,7 +4,7 @@ import $ from 'jquery';
 import { Terminal } from 'xterm';
 
 import { TtyShell } from './shell';
-import { Resource } from './package-mgr';
+import { Resource, ResourceBundle } from './package-mgr';
 
 
 
@@ -31,9 +31,11 @@ function main() {
             '/home/stdlib.cmi':    new Resource('/bin/ocaml/stdlib.cmi'),
             '/home/stdlib.cma':    new Resource('/bin/ocaml/stdlib.cma'),
             '/home/std_exit.cmo':  new Resource('/bin/ocaml/std_exit.cmo'),
-            '/home/a.ml':          'let _ = print_int @@ 4 + 5;\nprint_string "\n"\n'
+            '/home/a.ml':          'let _ = print_int @@ 4 + 5;\nprint_string "\\n"\n'
         };
         
+        // await fakeInstall(shell, baseSys);
+
         shell.start();
 
         shell.packageManager.install(baseSys);
@@ -41,5 +43,21 @@ function main() {
         Object.assign(window, {term, shell, dash: shell.mainProcess});
     });
 }
+
+/**
+ * Use this to install without sharing a volume.
+ * (must finish before shell.start().)
+ */
+async function fakeInstall(shell: TtyShell, bundle: ResourceBundle) {
+    for (let kv of Object.entries(bundle)) {
+        let [fn, content] = kv;
+        if (typeof content == 'string')
+            shell.files[fn] = content;
+        else if (content instanceof Resource)
+            shell.files[fn] = await content.fetch();
+    }
+}
+
+
 
 Object.assign(window, {main});
