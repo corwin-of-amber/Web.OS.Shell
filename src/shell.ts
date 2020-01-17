@@ -30,18 +30,11 @@ class Shell extends EventEmitter implements ProcessLoader {
         this.pool = new WorkerPool();
         this.pool.loader = this;
         this.pool.on('worker:data', (_, x) => this.emit('data', x));
-        this.env = {TERM: 'xterm-256color'};
+        this.env = {PATH: '/bin', TERM: 'xterm-256color'};
         this.volume = new SharedVolume({dev: {size: 1 << 26}});
         this.packageManager = new PackageManager(this.volume);
         this.files = {
-            '/bin/dash':    '#!/bin/dash.wasm',
-            '/bin/ls':      '#!/bin/ls.wasm',
-            '/bin/touch':   '#!/bin/touch.wasm',
-            '/bin/cat':     '#!/bin/cat.wasm',
-            '/bin/cut':     '#!/bin/cut.wasm',
-            '/bin/env':     '#!/bin/env.wasm',
-            '/bin/cksum':   '#!/bin/cksum.wasm',
-            '/bin/mkdir':   '#!/bin/mkdir.wasm'
+            '/bin/dash':    '#!/bin/dash.wasm'
         };
         this.filesUploaded = false;
     }

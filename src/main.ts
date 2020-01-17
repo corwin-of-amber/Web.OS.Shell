@@ -20,18 +20,36 @@ function main() {
         var shell = new TtyShell();
         shell.attach(term);
 
+        var ocaml = '/usr/local/lib/ocaml/';
+
         var baseSys = {
-            '/bin/fm':             '#!/bin/fileman.wasm',
-            '/bin/ocamlrun':       '#!/bin/ocamlrun.wasm',
-            '/bin/ocaml':          '#!/bin/ocamlrun.wasm /bin/ocaml.byte',
-            '/bin/ocamlc':         '#!/bin/ocamlrun.wasm /bin/ocamlc.byte',
-            '/home/camlheader':    '#!/bin/ocamlrun.wasm\n',
-            '/bin/ocaml.byte':     new Resource('/bin/ocaml.byte'),
-            '/bin/ocamlc.byte':    new Resource('/bin/ocamlc.byte'),
-            '/home/stdlib.cmi':    new Resource('/bin/ocaml/stdlib.cmi'),
-            '/home/stdlib.cma':    new Resource('/bin/ocaml/stdlib.cma'),
-            '/home/std_exit.cmo':  new Resource('/bin/ocaml/std_exit.cmo'),
-            '/home/a.ml':          'let _ = print_int @@ 4 + 5;\nprint_string "\\n"\n'
+            '/bin/ls':               '#!/bin/coreutils/ls.wasm',
+            '/bin/touch':            '#!/bin/coreutils/touch.wasm',
+            '/bin/cat':              '#!/bin/coreutils/cat.wasm',
+            '/bin/cut':              '#!/bin/coreutils/cut.wasm',
+            '/bin/env':              '#!/bin/coreutils/env.wasm',
+            '/bin/cksum':            '#!/bin/coreutils/cksum.wasm',
+            '/bin/mkdir':            '#!/bin/coreutils/mkdir.wasm',
+            '/bin/rm':               '#!/bin/coreutils/rm.wasm',
+            '/bin/date':             '#!/bin/coreutils/date.wasm',
+
+            '/bin/grep':             '#!/bin/grep.wasm',
+            '/bin/make':             '#!/bin/make.wasm',
+
+            '/bin/fm':               '#!/bin/fileman.wasm',
+            '/bin/ocamlrun':         '#!/bin/ocamlrun.wasm',
+            '/bin/ocaml':            '#!/bin/ocamlrun.wasm /bin/ocaml.byte',
+            '/bin/ocamlc':           '#!/bin/ocamlrun.wasm /bin/ocamlc.byte',
+            '/home/camlheader':      '#!/bin/ocamlrun.wasm\n',
+            '/bin/ocaml.byte':       new Resource('/bin/ocaml.byte'),
+            '/bin/ocamlc.byte':      new Resource('/bin/ocamlc.byte'),
+            [ocaml+'stdlib.cmi']:    new Resource('/bin/ocaml/stdlib.cmi'),
+            [ocaml+'stdlib.cma']:    new Resource('/bin/ocaml/stdlib.cma'),
+            [ocaml+'std_exit.cmo']:  new Resource('/bin/ocaml/std_exit.cmo'),
+
+            // Sample program
+            '/home/a.ml':          'let _ = print_int @@ 4 + 5;\nprint_string "\\n"\n',
+            '/home/Makefile':      'hello: a.cmo\n\tocamlc $^ -o $@\na.cmo: a.ml\n\tocamlc -c $^ -o $@'
         };
         
         // await fakeInstall(shell, baseSys);
