@@ -1,7 +1,7 @@
 import { EventEmitter } from 'events';
 import { Terminal } from 'xterm';
 
-import { Process, WorkerProcess } from 'wasi-kernel/src/kernel';
+import { Process } from 'wasi-kernel/src/kernel';
 import { SharedVolume } from 'wasi-kernel/src/kernel/services/shared-fs';
 import { WorkerPool, ProcessLoader, WorkerPoolItem } from 'wasi-kernel/src/kernel/services/worker-pool';
 
@@ -143,13 +143,5 @@ class TtyShell extends Shell {
 }
 
 
-/**
- * Note: Parcel updates the 'href' of links during build.
- */
-function getWorkerUrl() : string {
-    return (<any>document.head.querySelector('#wasi-worker')).href;
-}
 
-
-
-export {Shell, TtyShell }
+export { Shell, TtyShell }
