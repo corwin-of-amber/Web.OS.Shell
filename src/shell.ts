@@ -13,7 +13,6 @@ import { PackageManager } from './package-mgr';
 
 class Shell extends EventEmitter implements ProcessLoader {
 
-    workerScript: string
     mainProcess: Process
     fgProcesses: Process[]
     pool: WorkerPool
@@ -25,7 +24,6 @@ class Shell extends EventEmitter implements ProcessLoader {
 
     constructor() {
         super();
-        this.workerScript = getWorkerUrl();
         this.fgProcesses = [];
         this.pool = new WorkerPool();
         this.pool.loader = this;
@@ -44,8 +42,8 @@ class Shell extends EventEmitter implements ProcessLoader {
     }
 
     spawn(prog: string, argv: string[], env?: {[name: string]: string}) {
-        if (!path.isAbsolute(prog) && env.CWD)
-            prog = path.join(env.CWD, prog);
+        if (!path.isAbsolute(prog) && env.PWD)
+            prog = path.join(env.PWD, prog);
 
         var wasm: string,
             file = this.files[prog] || this.volume.readFileSync(prog),
