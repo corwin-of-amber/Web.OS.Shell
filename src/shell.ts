@@ -28,7 +28,7 @@ class Shell extends EventEmitter implements ProcessLoader {
         this.pool = new WorkerPool();
         this.pool.loader = this;
         this.pool.on('worker:data', (_, x) => this.emit('data', x));
-        this.env = {PATH: '/bin', TERM: 'xterm-256color'};
+        this.env = {PATH: '/bin', HOME: '/home', TERM: 'xterm-256color'};
         this.volume = new SharedVolume({dev: {size: 1 << 26}});
         this.packageManager = new PackageManager(this.volume);
         this.files = {
@@ -119,6 +119,7 @@ class Shell extends EventEmitter implements ProcessLoader {
 class TtyShell extends Shell {
 
     pty: Pty
+    term: Terminal
 
     constructor() {
         super();
@@ -134,10 +135,22 @@ class TtyShell extends Shell {
     }
 
     attach(term: Terminal) {
+        this.term = term;
         term.setOption("convertEol", true)
         term.onData((x: string) => this.pty.termWrite(x));
         this.pty.on('term:data', (x: Buffer) => term.write(x));
         this.on('data', (x: Uint8Array) => term.write(x));
+    }
+
+    populate(p: WorkerPoolItem) {
+        super.populate(p);
+        p.process.worker.addEventListener('message', (ev) => {
+            if (ev.data.tty && this.term) {
+                var win =  ev.data.tty.termios.win;
+                Atomics.store(win, 0, this.term.rows);
+                Atomics.store(win, 1, this.term.cols);
+            }
+        });
     }
 
 }

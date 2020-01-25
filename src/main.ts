@@ -10,7 +10,7 @@ import { Resource, ResourceBundle } from './package-mgr';
 
 function main() {
     $(async () => {
-        var term = new Terminal({cols: 60, rows: 19, allowTransparency: true,
+        var term = new Terminal({cols: 70, rows: 21, allowTransparency: true,
         theme: {background: 'rgba(0,0,0,0.1)'}});
         term.setOption("convertEol", true)
         term.open(document.getElementById('terminal'));
@@ -18,9 +18,10 @@ function main() {
         term.focus();
 
         var shell = new TtyShell();
+        shell.env['PYTHONHOME'] = '/bin';
         shell.attach(term);
 
-        var ocaml = '/usr/local/lib/ocaml/';
+        const ocaml = '/usr/local/lib/ocaml/';
 
         var baseSys = {
             '/bin/ls':               '#!/bin/coreutils/ls.wasm',
@@ -36,20 +37,25 @@ function main() {
             '/bin/grep':             '#!/bin/grep.wasm',
             '/bin/make':             '#!/bin/make.wasm',
 
+            '/bin/nano':             '#!/bin/nano.wasm',
+
+            '/bin/micropython':      '#!/bin/micropython.wasm',
+
             '/bin/fm':               '#!/bin/fileman.wasm',
-            '/bin/ocamlrun':         '#!/bin/ocamlrun.wasm',
-            '/bin/ocaml':            '#!/bin/ocamlrun.wasm /bin/ocaml.byte',
-            '/bin/ocamlc':           '#!/bin/ocamlrun.wasm /bin/ocamlc.byte',
-            '/home/camlheader':      '#!/bin/ocamlrun.wasm\n',
-            '/bin/ocaml.byte':       new Resource('/bin/ocaml.byte'),
-            '/bin/ocamlc.byte':      new Resource('/bin/ocamlc.byte'),
+            '/bin/ocamlrun':         '#!/bin/ocaml/ocamlrun.wasm',
+            '/bin/ocaml':            `#!/bin/ocaml/ocamlrun.wasm ${ocaml}ocaml.byte`,
+            '/bin/ocamlc':           `#!/bin/ocaml/ocamlrun.wasm ${ocaml}ocamlc.byte`,
+            [ocaml+'camlheader']:    '#!/bin/ocaml/ocamlrun.wasm\n',
+            [ocaml+'ocaml.byte']:    new Resource('/bin/ocaml/ocaml.byte'),
+            [ocaml+'ocamlc.byte']:   new Resource('/bin/ocaml/ocamlc.byte'),
             [ocaml+'stdlib.cmi']:    new Resource('/bin/ocaml/stdlib.cmi'),
             [ocaml+'stdlib.cma']:    new Resource('/bin/ocaml/stdlib.cma'),
             [ocaml+'std_exit.cmo']:  new Resource('/bin/ocaml/std_exit.cmo'),
 
             // Sample program
             '/home/a.ml':          'let _ = print_int @@ 4 + 5;\nprint_string "\\n"\n',
-            '/home/Makefile':      'hello: a.cmo\n\tocamlc $^ -o $@\na.cmo: a.ml\n\tocamlc -c $^ -o $@'
+            '/home/Makefile':      'hello: a.cmo\n\tocamlc $^ -o $@\na.cmo: a.ml\n\tocamlc -c $^ -o $@',
+            '/home/a.py':          'print(list(5 * x + y for x in range(10) for y in [4, 2, 1]))\n'
         };
         
         // await fakeInstall(shell, baseSys);
