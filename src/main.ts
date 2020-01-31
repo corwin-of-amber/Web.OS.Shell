@@ -41,6 +41,11 @@ function main() {
 
             '/bin/micropython':      '#!/bin/micropython.wasm',
 
+            '/bin/tex':              '#!/bin/tex/tex.wasm',
+            '/bin/pdftex':           '#!/bin/tex/pdftex.wasm',
+            '/usr/tex/dist/':        new Resource('/bin/tex/dist.zip'),
+            '/bin/texmf.cnf':        new Resource('/bin/tex/texmf.cnf'),
+
             '/bin/fm':               '#!/bin/fileman.wasm',
             '/bin/ocamlrun':         '#!/bin/ocaml/ocamlrun.wasm',
             '/bin/ocaml':            `#!/bin/ocaml/ocamlrun.wasm ${ocaml}ocaml.byte`,
@@ -55,7 +60,10 @@ function main() {
             // Sample program
             '/home/a.ml':          'let _ = print_int @@ 4 + 5;\nprint_string "\\n"\n',
             '/home/Makefile':      'hello: a.cmo\n\tocamlc $^ -o $@\na.cmo: a.ml\n\tocamlc -c $^ -o $@',
-            '/home/a.py':          'print(list(5 * x + y for x in range(10) for y in [4, 2, 1]))\n'
+            '/home/a.py':          'print(list(5 * x + y for x in range(10) for y in [4, 2, 1]))\n',
+
+            '/home/doc.tex':       '\\medskip \n\nhello $x^2$ \n\n \\bye\n',
+            '/home/arrows.tex':    new Resource('/bin/tex/sample-tikz.tex')
         };
         
         // await fakeInstall(shell, baseSys);

@@ -6,6 +6,7 @@
   "dependencies": {
     "@types/jquery": "^3.3.31",
     "jquery": "^3.4.1",
+    "jszip": "^3.2.2",
     "memfs": "^3.0.1",
     "node-pty": "^0.9.0",
     "xterm": "^4.3.0"

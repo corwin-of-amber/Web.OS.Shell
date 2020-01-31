@@ -1,4 +1,5 @@
 import path from 'path';
+import JSZip from 'jszip';
 import { SharedVolume } from "wasi-kernel/src/kernel";
 
 
@@ -24,11 +25,36 @@ class PackageManager {
             return this.volume.promises.writeFile(filename, content);
     }
 
+    async installZip(rootdir: string, content: Resource) {
+        var z = await JSZip.loadAsync(content.arrayBuffer()),
+            waitFor = [];
+        z.forEach((filename: string, entry: any /*ZipEntry*/) => {
+            let fullpath = path.join(rootdir, filename);
+            if (entry.dir)
+                this.volume.mkdirpSync(fullpath);
+            else
+                waitFor.push(entry.async('uint8array').then((ui8a: Uint8Array) =>
+                    this._installFile(fullpath, ui8a)
+                ));
+        });
+        await Promise.all(waitFor);
+    }
+
     async install(bundle: ResourceBundle, verbose = true) {
         let start = +new Date;
         for (let kv of Object.entries(bundle)) {
             let [filename, content] = kv;
-            await this.installFile(filename, content);
+            if (!filename.endsWith('/')) {
+                // install regular file
+                await this.installFile(filename, content);
+            }
+            else {
+                // install into a directory
+                if (content instanceof Resource)
+                    await this.installZip(filename, content);
+                else
+                    this.volume.mkdirpSync(filename);
+            }
             if (verbose)
                 console.log(`%cwrote ${filename} (+${+new Date - start}ms)`, 'color: #99c');
         }
@@ -45,9 +71,13 @@ class Resource {
         this.uri = uri;
     }
 
+    async arrayBuffer() {
+        return (await fetch(this.uri)).arrayBuffer()
+    }
+
     async fetch() {
         return new Uint8Array(
-            await (await fetch(this.uri)).arrayBuffer()
+            await this.arrayBuffer()
         );    
     }
 }
