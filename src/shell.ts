@@ -2,6 +2,7 @@ import { EventEmitter } from 'events';
 import { Terminal } from 'xterm';
 
 import { Process } from 'wasi-kernel/src/kernel';
+import { TtyProps } from 'wasi-kernel/src/kernel/bits/tty';
 import { SharedVolume } from 'wasi-kernel/src/kernel/services/shared-fs';
 import { WorkerPool, ProcessLoader, WorkerPoolItem } from 'wasi-kernel/src/kernel/services/worker-pool';
 
@@ -146,14 +147,27 @@ class TtyShell extends Shell {
         super.populate(p);
         p.process.worker.addEventListener('message', (ev) => {
             if (ev.data.tty && this.term) {
-                var win =  ev.data.tty.termios.win;
-                Atomics.store(win, 0, this.term.rows);
-                Atomics.store(win, 1, this.term.cols);
+                this.bindTermios(ev.data.tty);
             }
         });
     }
 
+    bindTermios(tty: TtyProps) {
+        var win = tty.termios.win;
+        this._updateWindowSize(win);
+        this.term.onResize((dim) => this._updateWindowSize(win, dim));
+    }
+
+    _updateWindowSize(win: Uint16Array,
+                      dimensions: TerminalDimensions = this.term) {
+        Atomics.store(win, 0, dimensions.rows);
+        Atomics.store(win, 1, dimensions.cols);
+    }
+
 }
+
+
+type TerminalDimensions = {cols: number, rows: number};
 
 
 
