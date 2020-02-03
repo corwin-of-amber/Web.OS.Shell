@@ -30,12 +30,18 @@ class PackageManager {
             waitFor = [];
         z.forEach((filename: string, entry: any /*ZipEntry*/) => {
             let fullpath = path.join(rootdir, filename);
-            if (entry.dir)
-                this.volume.mkdirpSync(fullpath);
-            else
-                waitFor.push(entry.async('uint8array').then((ui8a: Uint8Array) =>
+            waitFor.push((async () => {
+                if (this.isSymlink(entry.unixPermissions)) {
+                    let target = await entry.async('text');
+                    this.volume.createSymlink(target, fullpath)
+                }
+                else if (entry.dir)
+                    this.volume.mkdirpSync(fullpath);
+                else {
+                    let ui8a = await entry.async('uint8array');
                     this._installFile(fullpath, ui8a)
-                ));
+                }
+            })());
         });
         await Promise.all(waitFor);
     }
@@ -60,6 +66,10 @@ class PackageManager {
         }
     }
 
+    isSymlink(mode: number) {
+        return (mode & S_IFMT) === S_IFLNK;
+    }
+
 }
 
 type ResourceBundle = {[fn: string]: string | Uint8Array | Resource}
@@ -81,6 +91,11 @@ class Resource {
         );    
     }
 }
+
+
+// - from fs.constants
+const S_IFMT = 0o170000,
+      S_IFLNK = 0o120000;
 
 
 

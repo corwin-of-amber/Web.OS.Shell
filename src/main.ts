@@ -43,6 +43,7 @@ function main() {
 
             '/bin/tex':              '#!/bin/tex/tex.wasm',
             '/bin/pdftex':           '#!/bin/tex/pdftex.wasm',
+            '/bin/pdflatex':         '#!/bin/tex/pdftex.wasm',
             '/usr/tex/dist/':        new Resource('/bin/tex/dist.zip'),
             '/bin/texmf.cnf':        new Resource('/bin/tex/texmf.cnf'),
 
@@ -63,6 +64,7 @@ function main() {
             '/home/a.py':          'print(list(5 * x + y for x in range(10) for y in [4, 2, 1]))\n',
 
             '/home/doc.tex':       '\\medskip \n\nhello $x^2$ \n\n \\bye\n',
+            '/home/ldoc.tex':      '\\documentclass{article}\\begin{document}hello $x^7$\\end{document}',
             '/home/arrows.tex':    new Resource('/bin/tex/sample-tikz.tex')
         };
         
