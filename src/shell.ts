@@ -4,7 +4,7 @@ import { Terminal } from 'xterm';
 import { Process } from 'wasi-kernel/src/kernel';
 import { TtyProps } from 'wasi-kernel/src/kernel/bits/tty';
 import { SharedVolume } from 'wasi-kernel/src/kernel/services/shared-fs';
-import { WorkerPool, ProcessLoader, WorkerPoolItem } from 'wasi-kernel/src/kernel/services/worker-pool';
+import { WorkerPool, ProcessLoader, WorkerPoolItem, SpawnArgs } from 'wasi-kernel/src/kernel/services/worker-pool';
 
 import { Pty } from './pty';
 import path from 'path';
@@ -30,7 +30,7 @@ class Shell extends EventEmitter implements ProcessLoader {
         this.pool.loader = this;
         this.pool.on('worker:data', (_, x) => this.emit('data', x));
         this.env = {PATH: '/bin', HOME: '/home', TERM: 'xterm-256color'};
-        this.volume = new SharedVolume({dev: {size: 1 << 26}});
+        this.volume = new SharedVolume({dev: {size: 1 << 27}});
         this.packageManager = new PackageManager(this.volume);
         this.files = {
             '/bin/dash':    '#!/bin/dash.wasm'
@@ -71,7 +71,7 @@ class Shell extends EventEmitter implements ProcessLoader {
         return p;
     }
 
-    populate(p: WorkerPoolItem) {
+    populate(p: WorkerPoolItem, spawnArgs: SpawnArgs) {
         p.process.mountFs(this.volume);
         if (!this.filesUploaded) {
             p.process.worker.postMessage({upload: this.files});
@@ -81,6 +81,28 @@ class Shell extends EventEmitter implements ProcessLoader {
             if (ev.func === 'ioctl:tty' && ev.data.fd === 0)
                 this.emit('term-ctrl', ev.data.flags);
         });
+    }
+
+    exec(p: WorkerPoolItem, spawnArgs: SpawnArgs) {
+        if (spawnArgs.wasm.startsWith('/bin/ocaml')) {  // @todo this is OCaml-specific; just an experiemnt for now
+            var preload = ['dllcamlstr', 'dllunix', 'dllthreads', 'dllnums'].map(b => ({
+                name: `${b}.so`, uri: `/bin/ocaml/${b}.wasm`,
+                reloc: {data: ['caml_atom_table'], func: [
+                    'caml_alloc', 'caml_alloc_small', 'caml_alloc_custom',
+                    'caml_copy_nativeint', 'caml_copy_string', 'caml_register_custom_operations',
+                    'memset', 'memmove', 'caml_hash_mix_uint32', 'caml_serialize_int_4',
+                    'caml_serialize_block_4', 'caml_deserialize_uint_4', 'caml_deserialize_block_4',
+                    'caml_invalid_argument', 'caml_named_value', 'caml_raise', 'snprintf'
+                ]}
+            })).concat(['dllbyterun_stubs'].map(b => ({
+                name: `${b}.so`, uri: `/bin/coq/${b}.wasm`,
+                reloc: {data: ['caml_atom_table'], func: []}
+            })));
+            
+            p.process.worker.postMessage({dyld: {preload}});
+        }
+
+        this.pool.exec(p, spawnArgs);
     }
 
     shebang(script: string | Uint8Array) {
@@ -143,8 +165,8 @@ class TtyShell extends Shell {
         this.on('data', (x: Uint8Array) => term.write(x));
     }
 
-    populate(p: WorkerPoolItem) {
-        super.populate(p);
+    populate(p: WorkerPoolItem, spawnArgs: {wasm: string, argv: string[], env?: {}}) {
+        super.populate(p, spawnArgs);
         p.process.worker.addEventListener('message', (ev) => {
             if (ev.data.tty && this.term) {
                 this.bindTermios(ev.data.tty);
