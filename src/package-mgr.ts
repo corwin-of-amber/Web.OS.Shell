@@ -1,15 +1,22 @@
+import { EventEmitter } from 'events';
+import { Volume } from 'memfs/lib/volume';
 import path from 'path';
 import JSZip from 'jszip';
+import { DEFLATE } from 'jszip/lib/compressions'
+import { inflateRaw } from 'pako';
 import { SharedVolume } from "wasi-kernel/src/kernel";
 
 
 
-class PackageManager {
+class PackageManager extends EventEmitter {
 
-    volume: SharedVolume
+    volume: Volume
+    opts: {fastInflate: boolean}
 
-    constructor(volume: SharedVolume) {
+    constructor(volume: Volume) {
+        super();
         this.volume = volume;
+        this.opts = {fastInflate: true};
     }
 
     async installFile(filename: string, content: string | Uint8Array | Resource) {
@@ -19,7 +26,7 @@ class PackageManager {
 
     async _installFile(filename: string, content: string | Uint8Array) {
         this.volume.mkdirpSync(path.dirname(filename));
-        if (content instanceof Uint8Array && content.length > (1 << 14))
+        if (this.volume instanceof SharedVolume && content instanceof Uint8Array && content.length > (1 << 14))
             return this.volume.writeBlob(filename, content);
         else
             return this.volume.promises.writeFile(filename, content);
@@ -32,24 +39,37 @@ class PackageManager {
             let fullpath = path.join(rootdir, filename);
             waitFor.push((async () => {
                 if (this.isSymlink(entry.unixPermissions)) {
-                    let target = await entry.async('text');
-                    this.volume.createSymlink(target, fullpath)
+                    if (this.volume instanceof SharedVolume) {
+                        let target = await entry.async('text');
+                        this.volume.createSymlink(target, fullpath)
+                    }
+                    else
+                        throw new Error("symlinks not supported in this medium");
                 }
                 else if (entry.dir)
                     this.volume.mkdirpSync(fullpath);
                 else {
-                    let ui8a = await entry.async('uint8array');
-                    this._installFile(fullpath, ui8a)
+                    let ui8a = this.opts.fastInflate && entry._data.compression == DEFLATE
+                         ? this._inflateFast(entry)
+                         : await entry.async('uint8array');
+                    await this._installFile(fullpath, ui8a)
                 }
             })());
         });
         await Promise.all(waitFor);
     }
 
+    _inflateFast(entry: any) {
+        return inflateRaw(entry._data.compressedContent);
+    }
+
     async install(bundle: ResourceBundle, verbose = true) {
         let start = +new Date;
         for (let kv of Object.entries(bundle)) {
             let [filename, content] = kv;
+
+            this.emit('progress', {path: filename, content, done: false});
+
             if (!filename.endsWith('/')) {
                 // install regular file
                 await this.installFile(filename, content);
@@ -63,6 +83,8 @@ class PackageManager {
             }
             if (verbose)
                 console.log(`%cwrote ${filename} (+${+new Date - start}ms)`, 'color: #99c');
+
+            this.emit('progress', {path: filename, content, done: true});
         }
     }
 
