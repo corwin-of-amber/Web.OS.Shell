@@ -32,8 +32,8 @@ class PackageManager extends EventEmitter {
             return this.volume.promises.writeFile(filename, content);
     }
 
-    async installZip(rootdir: string, content: Resource) {
-        var z = await JSZip.loadAsync(content.arrayBuffer()),
+    async installZip(rootdir: string, content: Resource, progress: (p: DownloadProgress) => void = () => {}) {
+        var z = await JSZip.loadAsync(content.blob(progress)),
             waitFor = [];
         z.forEach((filename: string, entry: any /*ZipEntry*/) => {
             let fullpath = path.join(rootdir, filename);
@@ -77,7 +77,8 @@ class PackageManager extends EventEmitter {
             else {
                 // install into a directory
                 if (content instanceof Resource)
-                    await this.installZip(filename, content);
+                    await this.installZip(filename, content, (p: DownloadProgress) =>
+                        this.emit('progress', {path: filename, content, download: p, done: false}));
                 else
                     this.volume.mkdirpSync(filename);
             }
@@ -107,12 +108,28 @@ class Resource {
         return (await fetch(this.uri)).arrayBuffer()
     }
 
+    async blob(progress: (p: DownloadProgress) => void = () => {}) {
+        var response = await fetch(this.uri),
+            total = +response.headers.get('Content-Length'),
+            r = response.body.getReader(), chunks = [], downloaded = 0;
+        for(;;) {
+            var {value, done} = await r.read();
+            if (done) break;
+            chunks.push(value);
+            downloaded += value.length;
+            progress({total, downloaded})
+        }
+        return new Blob(chunks);
+    }
+
     async fetch() {
         return new Uint8Array(
             await this.arrayBuffer()
-        );    
+        );
     }
 }
+
+type DownloadProgress = { total: number, downloaded: number };
 
 
 // - from fs.constants
