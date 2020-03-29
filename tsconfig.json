@@ -1,9 +1,15 @@
 {
   "compilerOptions": {
-    "target": "es5",
+    "target": "es2019",
+    "module": "esnext",
     "lib": ["esnext", "dom"],
+    "moduleResolution": "node",
     "esModuleInterop": true,
     "downlevelIteration": true,
-    "outDir": "build"
-  }
+    "declaration": true,
+    "outDir": "lib"
+  },
+  "include": [
+    "src/index.ts"
+  ]
 }

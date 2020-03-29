@@ -4,7 +4,7 @@ import path from 'path';
 import JSZip from 'jszip';
 import { DEFLATE } from 'jszip/lib/compressions'
 import { inflateRaw } from 'pako';
-import { SharedVolume } from "wasi-kernel/src/kernel";
+import { SharedVolume } from 'wasi-kernel';
 
 
 
