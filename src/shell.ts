@@ -96,7 +96,7 @@ class Shell extends EventEmitter implements ProcessLoader {
                 ]}
             })).concat(['dllbyterun_stubs'].map(b => ({
                 name: `${b}.so`, uri: `/bin/coq/${b}.wasm`,
-                reloc: {data: ['caml_atom_table'], func: []}
+                reloc: {data: ['caml_atom_table'], func: ['caml_copy_double']}
             })));
             
             p.process.worker.postMessage({dyld: {preload}});

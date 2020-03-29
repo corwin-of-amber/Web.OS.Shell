@@ -32,8 +32,9 @@ class PackageManager extends EventEmitter {
             return this.volume.promises.writeFile(filename, content);
     }
 
-    async installZip(rootdir: string, content: Resource, progress: (p: DownloadProgress) => void = () => {}) {
-        var z = await JSZip.loadAsync(content.blob(progress)),
+    async installZip(rootdir: string, content: Resource | Blob, progress: (p: DownloadProgress) => void = () => {}) {
+        var payload = (content instanceof Resource) ? content.blob(progress) : content;
+        var z = await JSZip.loadAsync(payload),
             waitFor = [];
         z.forEach((filename: string, entry: any /*ZipEntry*/) => {
             let fullpath = path.join(rootdir, filename);
@@ -66,9 +67,10 @@ class PackageManager extends EventEmitter {
     async install(bundle: ResourceBundle, verbose = true) {
         let start = +new Date;
         for (let kv of Object.entries(bundle)) {
-            let [filename, content] = kv;
+            let [filename, content] = kv,
+                uri = (content instanceof Resource) ? content.uri : null;
 
-            this.emit('progress', {path: filename, content, done: false});
+            this.emit('progress', {path: filename, uri, done: false});
 
             if (!filename.endsWith('/')) {
                 // install regular file
@@ -78,14 +80,14 @@ class PackageManager extends EventEmitter {
                 // install into a directory
                 if (content instanceof Resource)
                     await this.installZip(filename, content, (p: DownloadProgress) =>
-                        this.emit('progress', {path: filename, content, download: p, done: false}));
+                        this.emit('progress', {path: filename, uri, download: p, done: false}));
                 else
                     this.volume.mkdirpSync(filename);
             }
             if (verbose)
                 console.log(`%cwrote ${filename} (+${+new Date - start}ms)`, 'color: #99c');
 
-            this.emit('progress', {path: filename, content, done: true});
+            this.emit('progress', {path: filename, uri, done: true});
         }
     }
 
@@ -127,6 +129,20 @@ class Resource {
             await this.arrayBuffer()
         );
     }
+
+    async prefetch(progress: (p: DownloadProgress) => void = () => {}) {
+        return new ResourceBlob(await this.blob(progress), this.uri);
+    }
+
+}
+
+class ResourceBlob extends Resource {
+    _blob: Blob
+    constructor(blob: Blob, uri: string = '') {
+        super(uri);
+        this._blob = blob;
+    }
+    async blob() { return this._blob; }
 }
 
 type DownloadProgress = { total: number, downloaded: number };
@@ -138,4 +154,4 @@ const S_IFMT = 0o170000,
 
 
 
-export { PackageManager, Resource, ResourceBundle }
+export { PackageManager, Resource, ResourceBlob, ResourceBundle, DownloadProgress }
