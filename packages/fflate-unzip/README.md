@@ -1,7 +1,7 @@
-# JSZip-unzip
+# fflate-unzip
 
-A JSZip version of the `unzip` command for extracting all the entries
-from a ZIP archive into a specified directory,
+A version of the `unzip` command based on fflate.
+It can be used for extracting all the entries from a ZIP archive into a specified directory,
 creating any required subdirectories.
 
 The target directory can be a physical one (if running in Node.js) or
@@ -11,7 +11,7 @@ The passed object must support the functions `mkdirSync`, `statSync`, and
 One such object can be found in [memfs](https://github.com/streamich/memfs).
 
 ```js
-import unzip from 'jszip-unzip';
+import unzip from 'fflate-unzip';
 import fs from 'fs';
 
 unzip(fs.readFileSync('data.zip'), {to: '/tmp/out'})
@@ -20,7 +20,7 @@ unzip(fs.readFileSync('data.zip'), {to: '/tmp/out'})
 With `memfs`:
 
 ```js
-import unzip from 'jszip-unzip';
+import unzip from 'fflate-unzip';
 import { fs } from 'memfs';
 
 async function extract() {   
