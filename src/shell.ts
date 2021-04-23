@@ -63,8 +63,8 @@ class Shell extends EventEmitter implements ProcessLoader {
         this.fgProcesses.unshift(p.process);
 
         p.promise
-            .then((ev: {code:number}) => console.log(`${name} - exit ${ev.code}`))
-            .catch((e: Error) => console.error(`${name} - error;`, e))
+            .then(<any>((ev: {code:number}) => console.log(`${prog} - exit ${ev.code}`)))
+            .catch((e: Error) => console.error(`${prog} - error;`, e))
             .finally(() => this.fgProcesses[0] === p.process 
                             && this.fgProcesses.shift());
 
@@ -81,23 +81,14 @@ class Shell extends EventEmitter implements ProcessLoader {
             if (ev.func === 'ioctl:tty' && ev.data.fd === 0)
                 this.emit('term-ctrl', ev.data.flags);
         });
+        p.process.opts.proc = {funcTableSz: 16348}; // @todo get size from wasm somehow?
     }
 
     exec(p: WorkerPoolItem, spawnArgs: SpawnArgs) {
         if (spawnArgs.wasm.startsWith('/bin/ocaml')) {  // @todo this is OCaml-specific; just an experiemnt for now
-            var preload = ['dllcamlstr', 'dllunix', 'dllthreads', 'dllnums'].map(b => ({
-                name: `${b}.so`, uri: `/bin/ocaml/${b}.wasm`,
-                reloc: {data: ['caml_atom_table'], func: [
-                    'caml_alloc', 'caml_alloc_small', 'caml_alloc_custom',
-                    'caml_copy_nativeint', 'caml_copy_string', 'caml_register_custom_operations',
-                    'memset', 'memmove', 'caml_hash_mix_uint32', 'caml_serialize_int_4',
-                    'caml_serialize_block_4', 'caml_deserialize_uint_4', 'caml_deserialize_block_4',
-                    'caml_invalid_argument', 'caml_named_value', 'caml_raise', 'snprintf'
-                ]}
-            })).concat(['dllbyterun_stubs'].map(b => ({
-                name: `${b}.so`, uri: `/bin/coq/${b}.wasm`,
-                reloc: {data: ['caml_atom_table'], func: ['caml_copy_double']}
-            })));
+            var preload = ['dllcamlstr', 'dllunix', 'dllthreads'].map(b => ({
+                name: `${b}.so`, uri: `/bin/ocaml/${b}.wasm`
+            }));
             
             p.process.worker.postMessage({dyld: {preload}});
         }

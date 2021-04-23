@@ -43,29 +43,30 @@ function main() {
             '/bin/fm':               '#!/bin/fileman.wasm',
 
             '/bin/micropython':      '#!/bin/micropython.wasm',
-
+/*
             '/bin/tex':              '#!/bin/tex/tex.wasm',
             '/bin/pdftex':           '#!/bin/tex/pdftex.wasm',
             '/bin/pdflatex':         '#!/bin/tex/pdftex.wasm',
             '/usr/tex/dist/':        new Resource('/bin/tex/dist.zip'),
             '/bin/texmf.cnf':        new Resource('/bin/tex/texmf.cnf'),
-
+*/
             '/bin/ocamlrun':         '#!/bin/ocaml/ocamlrun.wasm',
             '/bin/ocaml':            `#!/bin/ocaml/ocamlrun.wasm ${ocaml}ocaml`,
             '/bin/ocamlc':           `#!/bin/ocaml/ocamlrun.wasm ${ocaml}ocamlc`,
             [ocaml+'camlheader']:    '#!/bin/ocaml/ocamlrun.wasm\n',
-            [ocaml+'ocaml']:         new Resource('/bin/ocaml/ocaml'),
-            [ocaml+'ocamlc']:        new Resource('/bin/ocaml/ocamlc'),
-            [ocaml]:                 new Resource('/bin/ocaml/dist.zip'),
-
+            [ocaml]:                 new Resource('/bin/ocaml/base.zip'),
+/*
             '/bin/coqtop':           `#!/bin/ocaml/ocamlrun.wasm ${coq}coqtop.byte`,
             [coq+'coqtop.byte']:     new Resource('/bin/coq/coqtop.byte'),
             [coq]:                   new Resource('/bin/coq/dist.zip'),
+*/
+            '/bin/z3':               '#!/bin/z3.wasm',
+            '/bin/llc':              '#!/bin/llc.wasm',
 
             // Sample program
             '/home/a.ml':          'let re = Str.regexp ".*"\nlet _ = print_int @@ 4 + 5;\n  print_string "\\n"\n',
                                    // doesn't work yet: 'let re = Str.regexp ".*"\nlet _ = if Str.string_match re "hello" 0 then print_int @@ 4 + 5;\nprint_string "\\n"\n',
-            '/home/Makefile':      'hello: a.cmo\n\tocamlc str.cma $^ -o $@\na.cmo: a.ml\n\tocamlc -c $^ -o $@',
+            '/home/Makefile':      'hello: a.cmo\n\tocamlc str.cma $^ -o $@\na.cmo: a.ml\n\tocamlc -c $^ -o $@\n',
             '/home/a.py':          'print(list(5 * x + y for x in range(10) for y in [4, 2, 1]))\n',
 
             '/home/ebi.ml':        `let _ =
@@ -76,11 +77,13 @@ function main() {
                                     Format.printf "%s\n%!" (Big_int.string_of_big_int (Big_int.mult_big_int n m))
                                     `,
 
-            '/home/ebi.byte':      new Resource('/bin/ocaml/example_big_int.byte'),
+            //'/home/ebi.byte':      new Resource('/bin/ocaml/example_big_int.byte'),
 
             '/home/doc.tex':       '\\medskip \n\nhello $x^2$ \n\n \\bye\n',
-            '/home/ldoc.tex':      '\\documentclass{article}\\begin{document}hello $x^7$\\end{document}',
-            '/home/arrows.tex':    new Resource('/bin/tex/sample-tikz.tex')
+            '/home/ldoc.tex':      '\\documentclass{article}\\begin{document}hello $x^7$\\end{document}\n',
+            //'/home/arrows.tex':    new Resource('/bin/tex/sample-tikz.tex')
+            
+            '/home/hello.ll':      'define i32 @main() { entry: ret i32 0 }',
         };
         
         // await fakeInstall(shell, baseSys);
