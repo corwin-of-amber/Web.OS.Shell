@@ -1,11 +1,11 @@
 {
     "name": "fflate-unzip",
     "description": "Extract Zip files to physical folder or memfs using fflate (Node.js & browser)",
-    "version": "0.3.6-0",
+    "version": "0.7.0",
     "main": "lib/index.js",
     "browser": "src/index.ts",
     "dependencies": {
-        "fflate": "^0.3.6",
+        "fflate": "^0.7.1",
         "mkdirp": "^1.0.4"
     },
     "devDependencies": {
@@ -13,6 +13,10 @@
     },
     "scripts": {
         "build": "tsc"
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/corwin-of-amber/Web.OS.Shell/tree/master/packages/fflate-unzip"
     },
     "license": "MIT"
 }
