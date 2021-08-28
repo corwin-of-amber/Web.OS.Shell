@@ -2,7 +2,7 @@
   "compilerOptions": {
     "target": "es2019",
     "module": "esnext",
-    "lib": ["esnext", "dom"],
+    "lib": ["esnext", "DOM", "WebWorker"],
     "moduleResolution": "node",
     "esModuleInterop": true,
     "downlevelIteration": true,

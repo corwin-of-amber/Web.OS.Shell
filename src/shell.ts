@@ -117,10 +117,13 @@ class Shell extends EventEmitter implements ProcessLoader {
     }
 
     write(data: string | Uint8Array) {
-        if (typeof data === 'string')
-            data = Buffer.from(data);
         var fgp = this.fgProcesses[0];
-        if (fgp) fgp.stdin.write(data);
+        if (fgp) {
+            if (typeof data === 'string')
+                fgp.stdin.write(data);
+            else
+                fgp.stdin_raw.write(data);
+        }
     }
 
     sendEof() {
