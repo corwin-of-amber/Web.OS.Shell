@@ -130,6 +130,19 @@ class Shell extends EventEmitter implements ProcessLoader {
         var fgp = this.fgProcesses[0];
         if (fgp) fgp.stdin.end();
     }
+
+    readFile(fp: string, enc?: string) {
+        return new Blob([this.volume.readFileSync(fp, enc)],
+            {type: enc ? 'text/plain' : 'application/octet-stream'});
+    }
+
+    downloadFile(fp: string, enc?: string) {
+        var blob = this.readFile(fp, enc), 
+            a = document.createElement('a');
+        a.setAttribute('href', URL.createObjectURL(blob));
+        a.setAttribute('download', path.basename(fp));
+        a.click();
+    }
 }
 
 

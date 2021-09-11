@@ -10,7 +10,7 @@ import { Resource, ResourceBundle } from './package-mgr';
 
 function main() {
     $(async () => {
-        var term = new Terminal({cols: 70, rows: 21, allowTransparency: true,
+        var term = new Terminal({cols: 80, rows: 25, allowTransparency: true,
         theme: {background: 'rgba(0,0,0,0.1)'}});
         term.setOption("convertEol", true)
         term.open(document.getElementById('terminal'));
@@ -19,10 +19,12 @@ function main() {
 
         var shell = new TtyShell();
         shell.env['PYTHONHOME'] = '/bin';
+        shell.env['max_print_line'] = '1000'; // for latex
         shell.attach(term);
 
-        const ocaml = '/usr/local/lib/ocaml/';
-        const coq = '/usr/local/lib/coq/';
+        const ocaml = '/usr/local/lib/ocaml';
+        const coq = '/usr/local/lib/coq';
+        const tex = '/usr/local/tex';
 
         var baseSys = {
             '/bin/ls':               '#!/bin/coreutils/ls.wasm',
@@ -42,23 +44,28 @@ function main() {
 
             '/bin/fm':               '#!/bin/fileman.wasm',
 
+            '/bin/python':           '#!/bin/python.wasm',
             '/bin/micropython':      '#!/bin/micropython.wasm',
+
+            //'/bin/lib/python3.9/':   new Resource('/bin/python.zip'),
 /*
             '/bin/tex':              '#!/bin/tex/tex.wasm',
+            */
             '/bin/pdftex':           '#!/bin/tex/pdftex.wasm',
             '/bin/pdflatex':         '#!/bin/tex/pdftex.wasm',
-            '/usr/tex/dist/':        new Resource('/bin/tex/dist.zip'),
             '/bin/texmf.cnf':        new Resource('/bin/tex/texmf.cnf'),
-*/
+            [`${tex}/dist/`]:        new Resource('/bin/tex/dist.tar'),
+            [`${tex}/tldist/`]:      new Resource('/bin/tex/tldist.tar'),
+
             '/bin/ocamlrun':         '#!/bin/ocaml/ocamlrun.wasm',
-            '/bin/ocaml':            `#!/bin/ocaml/ocamlrun.wasm ${ocaml}ocaml`,
-            '/bin/ocamlc':           `#!/bin/ocaml/ocamlrun.wasm ${ocaml}ocamlc`,
-            [ocaml+'camlheader']:    '#!/bin/ocaml/ocamlrun.wasm\n',
-            [ocaml]:                 new Resource('/bin/ocaml/base.zip'),
+            '/bin/ocaml':            `#!/bin/ocaml/ocamlrun.wasm ${ocaml}/ocaml`,
+            '/bin/ocamlc':           `#!/bin/ocaml/ocamlrun.wasm ${ocaml}/ocamlc`,
+            [`${ocaml}/camlheader`]: '#!/bin/ocaml/ocamlrun.wasm\n',
+            //[ocaml]:                 new Resource('/bin/ocaml/base.zip'),
 /*
             '/bin/coqtop':           `#!/bin/ocaml/ocamlrun.wasm ${coq}coqtop.byte`,
-            [coq+'coqtop.byte']:     new Resource('/bin/coq/coqtop.byte'),
-            [coq]:                   new Resource('/bin/coq/dist.zip'),
+            [`${coq}/coqtop.byte`]:  new Resource('/bin/coq/coqtop.byte'),
+            [`${coq}/`]:             new Resource('/bin/coq/dist.zip'),
 */
             '/bin/z3':               '#!/bin/z3.wasm',
             '/bin/llc':              '#!/bin/llc.wasm',
@@ -80,7 +87,8 @@ function main() {
             //'/home/ebi.byte':      new Resource('/bin/ocaml/example_big_int.byte'),
 
             '/home/doc.tex':       '\\medskip \n\nhello $x^2$ \n\n \\bye\n',
-            '/home/ldoc.tex':      '\\documentclass{article}\\begin{document}hello $x^7$\\end{document}\n',
+            '/home/ldoc.tex':      '\\documentclass{article}\\usepackage[T1]{fontenc}\\begin{document}hello $x^7$\\end{document}\n',
+            '/home/ol.tex':        new Resource('/bin/tex/examples/overleaf-scientific-writing-exercise.tex'),
             //'/home/arrows.tex':    new Resource('/bin/tex/sample-tikz.tex')
             
             '/home/hello.ll':      'define i32 @main() { entry: ret i32 0 }',

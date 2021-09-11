@@ -4,8 +4,9 @@ import path from 'path';
 import JSZip from 'jszip';
 import { DEFLATE } from 'jszip/lib/compressions'
 import { inflateRaw } from 'pako';
+import tar from 'tar-stream';
+import concat from 'concat-stream';
 import { SharedVolume } from 'wasi-kernel';
-
 
 
 class PackageManager extends EventEmitter {
@@ -32,6 +33,14 @@ class PackageManager extends EventEmitter {
             return this.volume.promises.writeFile(filename, content);
     }
 
+    installSymlink(filename: string, target: string) {
+        if (this.volume instanceof SharedVolume) {
+            this.volume.createSymlink(target, filename);
+        }
+        else
+            throw new Error(`symlinks not supported in this medium (installing '${filename}')`);
+    }
+
     async installZip(rootdir: string, content: Resource | Blob, progress: (p: DownloadProgress) => void = () => {}) {
         var payload = (content instanceof Resource) ? content.blob(progress) : content;
         var z = await JSZip.loadAsync(payload),
@@ -40,12 +49,7 @@ class PackageManager extends EventEmitter {
             let fullpath = path.join(rootdir, filename);
             waitFor.push((async () => {
                 if (this.isSymlink(entry.unixPermissions)) {
-                    if (this.volume instanceof SharedVolume) {
-                        let target = await entry.async('text');
-                        this.volume.createSymlink(target, fullpath)
-                    }
-                    else
-                        throw new Error("symlinks not supported in this medium");
+                    this.installSymlink(fullpath, await entry.async('text'));
                 }
                 else if (entry.dir)
                     this.volume.mkdirpSync(fullpath);
@@ -64,6 +68,47 @@ class PackageManager extends EventEmitter {
         return inflateRaw(entry._data.compressedContent);
     }
 
+    async installTar(rootdir: string, content: Resource | Blob, progress: (p: DownloadProgress) => void = () => {}) {
+        var payload = (content instanceof Resource) ? await content.blob(progress) : content,
+            ui8a = new Uint8Array(await payload.arrayBuffer());  /** @todo streaming? */
+        let extract = tar.extract();
+        extract.on('entry', (header, stream, next) => {
+            let fullpath = `${rootdir}/${header.name}`, wait = false;
+
+            switch (header.type) {
+            case 'symlink':
+                this.installSymlink(fullpath, header.linkname); break;
+            case 'file':
+                wait = true;  // do not continue until after install finishes
+                stream.pipe(concat(async ui8a => {
+                    await this.installFile(fullpath, ui8a);
+                    next();
+                }));
+                break;
+            case 'directory':
+                this.volume.mkdirpSync(fullpath);
+                break;
+            default:
+                console.warn(`Unrecognized tar entry '${fullpath}' of type '${header.type}'`);
+            }
+            if (!wait) stream.on('end', () => next());
+            stream.resume();
+        });
+        
+        return new Promise((resolve, reject) => {
+            extract.on('finish', resolve);
+            extract.on('error', reject);
+            extract.end(ui8a);
+        });
+    }
+
+    installArchive(rootdir: string, content: Resource, progress: (p: DownloadProgress) => void = () => {}) {
+        if (content.uri.endsWith('.zip'))
+            return this.installZip(rootdir, content, progress);
+        else
+            return this.installTar(rootdir, content, progress);
+    }
+
     async install(bundle: ResourceBundle, verbose = true) {
         let start = +new Date;
         for (let kv of Object.entries(bundle)) {
@@ -79,7 +124,7 @@ class PackageManager extends EventEmitter {
             else {
                 // install into a directory
                 if (content instanceof Resource)
-                    await this.installZip(filename, content, (p: DownloadProgress) =>
+                    await this.installArchive(filename, content, (p: DownloadProgress) =>
                         this.emit('progress', {path: filename, uri, download: p, done: false}));
                 else
                     this.volume.mkdirpSync(filename);
