@@ -26,7 +26,7 @@ class PackageManager extends EventEmitter {
     }
 
     async _installFile(filename: string, content: string | Uint8Array) {
-        this.volume.mkdirpSync(path.dirname(filename));
+        this.volume.mkdirSync(path.dirname(filename), {recursive: true});
         if (this.volume instanceof SharedVolume && content instanceof Uint8Array && content.length > (1 << 14))
             return this.volume.writeBlob(filename, content);
         else
@@ -52,7 +52,7 @@ class PackageManager extends EventEmitter {
                     this.installSymlink(fullpath, await entry.async('text'));
                 }
                 else if (entry.dir)
-                    this.volume.mkdirpSync(fullpath);
+                    this.volume.mkdirSync(fullpath, {recursive: true});
                 else {
                     let ui8a = this.opts.fastInflate && entry._data.compression == DEFLATE
                          ? this._inflateFast(entry)
@@ -71,7 +71,8 @@ class PackageManager extends EventEmitter {
     async installTar(rootdir: string, content: Resource | Blob, progress: (p: DownloadProgress) => void = () => {}) {
         var payload = (content instanceof Resource) ? await content.blob(progress) : content,
             ui8a = new Uint8Array(await payload.arrayBuffer());  /** @todo streaming? */
-        let extract = tar.extract();
+        let extract = tar.extract(),
+            pending = [];
         extract.on('entry', (header, stream, next) => {
             let fullpath = `${rootdir}/${header.name}`, wait = false;
 
@@ -79,27 +80,26 @@ class PackageManager extends EventEmitter {
             case 'symlink':
                 this.installSymlink(fullpath, header.linkname); break;
             case 'file':
-                wait = true;  // do not continue until after install finishes
-                stream.pipe(concat(async ui8a => {
-                    await this.installFile(fullpath, ui8a);
-                    next();
+                stream.pipe(concat(ui8a => {
+                    pending.push(this.installFile(fullpath, ui8a));
                 }));
                 break;
             case 'directory':
-                this.volume.mkdirpSync(fullpath);
+                this.volume.mkdirSync(fullpath, {recursive: true});
                 break;
             default:
                 console.warn(`Unrecognized tar entry '${fullpath}' of type '${header.type}'`);
             }
-            if (!wait) stream.on('end', () => next());
+            stream.on('end', () => next());
             stream.resume();
         });
         
-        return new Promise((resolve, reject) => {
+        await new Promise((resolve, reject) => {
             extract.on('finish', resolve);
             extract.on('error', reject);
             extract.end(ui8a);
         });
+        await Promise.all(pending);
     }
 
     installArchive(rootdir: string, content: Resource, progress: (p: DownloadProgress) => void = () => {}) {
@@ -127,7 +127,7 @@ class PackageManager extends EventEmitter {
                     await this.installArchive(filename, content, (p: DownloadProgress) =>
                         this.emit('progress', {path: filename, uri, download: p, done: false}));
                 else
-                    this.volume.mkdirpSync(filename);
+                    this.volume.mkdirSync(filename, {recursive: true});
             }
             if (verbose)
                 console.log(`%cwrote ${filename} (+${+new Date - start}ms)`, 'color: #99c');
