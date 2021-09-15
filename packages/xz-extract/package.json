@@ -1,0 +1,14 @@
+{
+    "name": "xz-extract",
+    "version": "0.1.0",
+    "main": "lib/index.js",
+    "scripts": {
+        "build": "tsc"
+    },
+    "dependencies": {
+        "python-struct": "^1.1.3"
+    },
+    "devDependencies": {
+        "@types/python-struct": "^1.0.0"
+    }
+}

@@ -1,0 +1,3 @@
+[submodule "packages/xz-extract/vendor/lzma2-js"]
+	path = packages/xz-extract/vendor/lzma2-js
+	url = https://github.com/SortaCore/lzma2-js.git

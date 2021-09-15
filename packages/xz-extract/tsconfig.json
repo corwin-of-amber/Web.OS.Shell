@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    "target": "es2019",
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "downlevelIteration": true,
+    "declaration": true,
+    "outDir": "lib"
+  },
+  "include": [
+    "src/*.ts"
+  ]
+}
