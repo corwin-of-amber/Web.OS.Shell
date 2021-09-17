@@ -1,7 +1,7 @@
 import fs from 'fs';
-import Xz from '..';
+import Xz from '../src/index';
 
 
-var xz = new Xz(fs.readFileSync('/tmp/index.ts.xz'));
+var xz = new Xz(fs.readFileSync('/tmp/demo-data.xz'));
 
 console.log(xz.decompressBlock());

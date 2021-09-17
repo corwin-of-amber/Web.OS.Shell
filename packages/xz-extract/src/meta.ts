@@ -16,7 +16,7 @@ class Xz {
 
     get footer() {
         var [crc, bwSz, _, check, magic] =
-            struct.unpack("<LIBB2s", <Buffer>this.stream.slice(-12));
+            struct.unpack("<LIBB2s", Buffer.from(this.stream.slice(-12)));
         if (magic != Xz.FOOTER_MAGIC)
             throw new Error(`invalid footer magic bytes (expected '${Xz.FOOTER_MAGIC}')`);
         return {bwSz: (<number>bwSz + 1) * 4, check};
@@ -24,7 +24,7 @@ class Xz {
 
     get index() {
         var buf = this.stream.slice(-12 - this.footer.bwSz),
-            [crc] = struct.unpack("<L", <Buffer>buf.slice(-4)),
+            [crc] = struct.unpack("<L", Buffer.from(buf.slice(-4))),
             mbis = decodeMbis(buf.slice(1, -4)),
             blocks = [] as Xz.BlockRecord[], [nblocks, _] = iget(mbis);
         for (let i = 0; i < nblocks; i++) {
