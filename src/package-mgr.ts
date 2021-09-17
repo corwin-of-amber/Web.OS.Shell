@@ -102,8 +102,12 @@ class PackageManager extends EventEmitter {
         await Promise.all(pending);
     }
 
-    installArchive(rootdir: string, content: Resource, progress: (p: DownloadProgress) => void = () => {}) {
-        if (content.uri.endsWith('.zip'))
+    async installArchive(rootdir: string, content: Resource | Resource[], progress: (p: DownloadProgress) => void = () => {}) {
+        if (isMultiple(content)) {
+            for (let overlay of content)
+                await this.installArchive(rootdir, overlay, progress);
+        }
+        else if (content.uri.endsWith('.zip'))
             return this.installZip(rootdir, content, progress);
         else
             return this.installTar(rootdir, content, progress);
@@ -119,13 +123,15 @@ class PackageManager extends EventEmitter {
 
             if (!filename.endsWith('/')) {
                 // install regular file
+                if (isMultiple(content))
+                    throw new Error(`cannot install multiple resource into regular file '${filename}'`);
                 await this.installFile(filename, content);
             }
             else {
                 // install into a directory
-                if (content instanceof Resource)
+                if (content instanceof Resource || isMultiple(content))
                     await this.installArchive(filename, content, (p: DownloadProgress) =>
-                        this.emit('progress', {path: filename, uri, download: p, done: false}));
+                        this.emit('progress', {path: filename, uri: uri ?? p.uri, download: p, done: false}));
                 else
                     this.volume.mkdirSync(filename, {recursive: true});
             }
@@ -142,7 +148,11 @@ class PackageManager extends EventEmitter {
 
 }
 
-type ResourceBundle = {[fn: string]: string | Uint8Array | Resource}
+type ResourceBundle = {[fn: string]: string | Uint8Array | Resource | Resource[]}
+
+function isMultiple(x: any): x is Resource[] {
+    return Array.isArray(x) && x[0] instanceof Resource;
+}
 
 class Resource {
     uri: string
@@ -164,7 +174,7 @@ class Resource {
             if (done) break;
             chunks.push(value);
             downloaded += value.length;
-            progress({total, downloaded})
+            progress({uri: this.uri, total, downloaded})
         }
         return new Blob(chunks);
     }
@@ -190,7 +200,7 @@ class ResourceBlob extends Resource {
     async blob() { return this._blob; }
 }
 
-type DownloadProgress = { total: number, downloaded: number };
+type DownloadProgress = { uri: string, total: number, downloaded: number };
 
 
 // - from fs.constants
