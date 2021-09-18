@@ -166,6 +166,7 @@ class Resource {
     }
 
     async blob(progress: (p: DownloadProgress) => void = () => {}) {
+        progress({uri: this.uri, total: 1, downloaded: 0}); /* dummy entry */
         var response = await fetch(this.uri),
             total = +response.headers.get('Content-Length'),
             r = response.body.getReader(), chunks = [], downloaded = 0;
